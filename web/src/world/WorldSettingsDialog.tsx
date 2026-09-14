@@ -142,7 +142,10 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
 
   const resetCeoImage = () => setCeoImageUrl(DEFAULT_OFFICE_CEO_IMAGE_URL);
 
-  const loadCharacterImageFile = async (index: number, file: File | null) => {
+  const loadImageFile = async (
+    file: File | null,
+    onLoaded: (dataUrl: string) => void,
+  ) => {
     if (!file) {
       return;
     }
@@ -153,14 +156,21 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
     setBusy(true);
     setMessage(null);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setCharacterImageUrl(index, normalizeWorldCharacterImageUrl(dataUrl) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]);
+      onLoaded(await readFileAsDataUrl(file));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load character image");
     } finally {
       setBusy(false);
     }
   };
+
+  const loadCeoImageFile = (file: File | null) => loadImageFile(file, (dataUrl) => {
+    setCeoImage(normalizeWorldCharacterImageUrl(dataUrl) ?? DEFAULT_OFFICE_CEO_IMAGE_URL);
+  });
+
+  const loadCharacterImageFile = (index: number, file: File | null) => loadImageFile(file, (dataUrl) => {
+    setCharacterImageUrl(index, normalizeWorldCharacterImageUrl(dataUrl) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]);
+  });
 
   const save = async () => {
     setBusy(true);
@@ -356,6 +366,19 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
                 </div>
               </details>
               <div className="world-character-setting-actions">
+                <label className="btn btn-small world-character-upload">
+                  <Upload size={13} aria-hidden="true" /> Upload
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    disabled={busy}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      event.target.value = "";
+                      void loadCeoImageFile(file);
+                    }}
+                  />
+                </label>
                 <button
                   className="btn btn-small"
                   type="button"
