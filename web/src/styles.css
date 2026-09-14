@@ -4794,6 +4794,66 @@ button {
   min-width: 0;
 }
 
+.world-character-gallery-picker {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.world-character-gallery-picker summary {
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.world-character-gallery-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  max-height: 172px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: rgb(0 0 0 / 0.18);
+}
+
+.world-character-gallery-option {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-width: 0;
+  padding: 5px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--subtext1);
+  background: transparent;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.world-character-gallery-option:hover,
+.world-character-gallery-option:focus-visible,
+.world-character-gallery-option[aria-pressed="true"] {
+  border-color: var(--blue);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.world-character-gallery-option img {
+  width: 32px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.world-character-gallery-option span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .world-character-setting-actions {
   display: flex;
   flex-wrap: wrap;

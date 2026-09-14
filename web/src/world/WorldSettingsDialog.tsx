@@ -317,27 +317,6 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
                 />
                 <label className="field-label world-character-setting-field">
                   <span>Character {index + 1}</span>
-                  <select
-                    className="field"
-                    value={galleryItems.some((item) => item.url === imageUrl) ? imageUrl : ""}
-                    disabled={busy}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        setCharacterImageUrl(index, event.target.value);
-                      }
-                    }}
-                  >
-                    <option value="">Choose from gallery…</option>
-                    {characterGallery.collections.map((collection) => (
-                      <optgroup key={collection.id} label={collection.label}>
-                        {collection.items.map((item) => (
-                          <option key={`${collection.id}:${item.id}`} value={item.url}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
                   <input
                     className="field"
                     aria-label={`Character ${index + 1} image URL`}
@@ -349,6 +328,25 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
                     onChange={(event) => setCharacterImageUrl(index, event.target.value)}
                   />
                 </label>
+                <details className="world-character-gallery-picker">
+                  <summary>Choose from gallery…</summary>
+                  <div className="world-character-gallery-options">
+                    {galleryItems.map((item) => (
+                      <button
+                        className="world-character-gallery-option"
+                        type="button"
+                        key={`${item.collectionLabel}:${item.id}`}
+                        aria-pressed={item.url === imageUrl}
+                        title={`${item.collectionLabel} · ${item.label}`}
+                        disabled={busy}
+                        onClick={() => setCharacterImageUrl(index, item.url)}
+                      >
+                        <img src={item.url} alt="" aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
                 <div className="world-character-setting-actions">
                   <label className="btn btn-small world-character-upload">
                     <Upload size={13} aria-hidden="true" /> Upload
