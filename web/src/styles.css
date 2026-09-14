@@ -2142,21 +2142,17 @@ button {
 }
 
 .world-conversation-terminal .terminal-host {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   padding: 0;
   background: rgb(17 17 27 / 88%);
 }
 
 .world-conversation-terminal .terminal-host > .xterm {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
 }
 
 .world-conversation-terminal .terminal-host > .xterm .xterm-screen {
-  margin: auto;
+  margin: 0;
 }
 
 .world-conversation-terminal .terminal-stage[data-terminal-translucent="true"] {
