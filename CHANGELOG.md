@@ -23,6 +23,7 @@ Web's own release history remains in its upstream changelog.
 - Kept Chinese IME preedit text and the native candidate anchor at the terminal cursor in Office
   conversations, including after moving or resizing a bubble. Removed the bubble backdrop blur
   that incorrectly rebased viewport-positioned input elements; the translucent background remains.
+  ([#1](https://github.com/lion-lucaschang/herdr-world/pull/1))
 - Allowed a shared bridge's own LAN page to authenticate without duplicating its URL under
   advanced client-origin settings, while retaining explicit policy for pages served elsewhere.
   [Herdr World PR #77](https://github.com/IvoryHeart/herdr-world/pull/77)
