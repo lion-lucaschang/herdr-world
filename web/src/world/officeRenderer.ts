@@ -68,7 +68,10 @@ import {
   officeModelUsageTotal,
   formatOfficeUsage,
 } from "./officeObservability";
-import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
+import {
+  DEFAULT_OFFICE_CEO_IMAGE_URL,
+  DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
+} from "./officeCharacters";
 
 const OFFICE_HEADING_TEXT_SIZE = 13;
 
@@ -202,6 +205,7 @@ export async function createOfficeRenderer(
   onCanvasRendered: (revision: number) => void,
   roomAlignment: OfficeRoomAlignment,
   longRoomTitleMode: OfficeLongRoomTitleMode,
+  ceoImageUrl = DEFAULT_OFFICE_CEO_IMAGE_URL,
   characterImageUrls = DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
 ): Promise<OfficeRendererController> {
   officeDebug("renderer:create-start", {
@@ -269,15 +273,15 @@ export async function createOfficeRenderer(
   diagnostics.canvases = document.querySelectorAll("canvas[data-office-canvas='true']").length;
   diagnostics.lastError = null;
 
-  const textures = await Promise.all(
-    characterImageUrls.map((url) => loadTexture(url).catch(() => Texture.EMPTY)),
+  const [ceoTexture, ...textures] = await Promise.all(
+    [ceoImageUrl, ...characterImageUrls].map((url) => loadTexture(url).catch(() => Texture.EMPTY)),
   );
   officeDebug("renderer:textures-ready", {
     textures: textures.filter((texture) => texture !== Texture.EMPTY).length,
   });
   if (disposed) {
     app.destroy(true, OFFICE_SCENE_DESTROY_OPTIONS);
-    destroyTextures(textures);
+    destroyTextures([ceoTexture, ...textures]);
     diagnostics.destroys += 1;
     diagnostics.activeApplications = Math.max(0, diagnostics.activeApplications - 1);
     diagnostics.activeTickers = Math.max(0, diagnostics.activeTickers - 1);
@@ -382,6 +386,7 @@ export async function createOfficeRenderer(
       currentProjection,
       currentObservability,
       currentSelectedKey,
+      ceoTexture,
       textures,
       animated,
       select,
@@ -621,7 +626,7 @@ export async function createOfficeRenderer(
     canvasActivationCandidates.delete(select);
     app.ticker.remove(ticker);
     app.destroy(true, OFFICE_SCENE_DESTROY_OPTIONS);
-    destroyTextures(textures);
+    destroyTextures([ceoTexture, ...textures]);
     diagnostics.activeApplications = Math.max(0, diagnostics.activeApplications - 1);
     diagnostics.activeTickers = Math.max(0, diagnostics.activeTickers - 1);
     diagnostics.activeObservers = Math.max(0, diagnostics.activeObservers - 1);
@@ -685,7 +690,7 @@ export async function createOfficeRenderer(
       canvasActivationCandidates.delete(select);
       app.ticker.remove(ticker);
       app.destroy(true, OFFICE_SCENE_DESTROY_OPTIONS);
-      destroyTextures(textures);
+      destroyTextures([ceoTexture, ...textures]);
       if (ownsCanvas) {
         element.replaceChildren();
       }
@@ -837,6 +842,7 @@ function drawCeoReception(
   projection: HerdrOfficeProjection,
   observability: OfficeObservability,
   selectedKey: string | null,
+  ceoTexture: Texture,
   textures: readonly Texture[],
   animated: AnimatedItem[],
   onSelect: (key: string) => void,
@@ -888,7 +894,7 @@ function drawCeoReception(
     undefined,
     13,
   );
-  drawCeo(ceoContent, textures, ceoBlocks.localCeoX);
+  drawCeo(ceoContent, ceoTexture, ceoBlocks.localCeoX);
   drawOtelCostBoard(ceoContent, observability, ceoBlocks.localOtelBoardX);
   drawLiveStateBlackboard(ceoContent, projection, ceoBlocks.localBoardX);
   const receptionRects = ceoBlocks.localReceptions;
@@ -952,7 +958,7 @@ function drawVerticalRoad(
   parent.addChild(road);
 }
 
-function drawCeo(parent: Container, textures: readonly Texture[], deskX: number) {
+function drawCeo(parent: Container, texture: Texture, deskX: number) {
   const deskWidth = OFFICE_GEOMETRY.ceoDeskWidth;
   const deskCenterX = deskX + deskWidth / 2;
   const title = label("YOU · CEO", { size: 11, color: 0xf6e3b2, anchor: 0.5 });
@@ -961,7 +967,7 @@ function drawCeo(parent: Container, textures: readonly Texture[], deskX: number)
   drawChair(parent, deskCenterX, 136, 0x8c6e35);
   const viewer = new Container();
   viewer.position.set(deskCenterX, 148);
-  addCharacterSprite(viewer, textures[0] ?? Texture.EMPTY);
+  addCharacterSprite(viewer, texture);
   parent.addChild(viewer);
   drawChairArms(parent, deskCenterX, 136, 0x8c6e35);
   const desk = new Graphics();

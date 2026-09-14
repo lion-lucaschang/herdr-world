@@ -1,4 +1,5 @@
 export const OFFICE_CHARACTER_COUNT = 12;
+export const DEFAULT_OFFICE_CEO_IMAGE_URL = "/world/characters/ceo-lobster.png";
 
 export const DEFAULT_OFFICE_CHARACTER_IMAGE_URLS = Object.freeze(
   Array.from(

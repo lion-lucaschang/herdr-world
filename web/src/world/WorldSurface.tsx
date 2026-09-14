@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import type { SurfaceComponentProps } from "../surfaceRegistry";
 import { PixelOfficeCanvas } from "./PixelOfficeCanvas";
 import {
+  DEFAULT_OFFICE_CEO_IMAGE_URL,
   DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   officeCharacterImageUrlAt,
 } from "./officeCharacters";
@@ -61,6 +62,7 @@ export type WorldSurfaceContext = {
   agentActivityTransitions: ReadonlyMap<string, number>;
   roomAlignment: OfficeRoomAlignment;
   longRoomTitleMode: OfficeLongRoomTitleMode;
+  ceoImageUrl: string;
   characterImageUrls: readonly string[];
   canCreateSeat: (roomKey: string) => boolean;
   onNewSeat: (roomKey?: string) => void;
@@ -145,6 +147,7 @@ const FALLBACK_CONTEXT: WorldSurfaceContext = {
   agentActivityTransitions: new Map(),
   roomAlignment: "left",
   longRoomTitleMode: "expand",
+  ceoImageUrl: DEFAULT_OFFICE_CEO_IMAGE_URL,
   characterImageUrls: DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   canCreateSeat: () => false,
   onNewSeat: () => {},
@@ -480,6 +483,7 @@ function WorldStage({
           onCanvasRendered={setCanvasRenderedRevision}
           roomAlignment={context.roomAlignment}
           longRoomTitleMode={context.longRoomTitleMode}
+          ceoImageUrl={context.ceoImageUrl}
           characterImageUrls={context.characterImageUrls}
           onHover={onCanvasHover}
           onAnchorChange={(anchors) => setConversationAnchors(anchors ?? {})}
@@ -916,6 +920,7 @@ export function isWorldSurfaceContext(value: unknown): value is WorldSurfaceCont
       record.roomAlignment === "center" ||
       record.roomAlignment === "right") &&
     (record.longRoomTitleMode === "expand" || record.longRoomTitleMode === "compact") &&
+    typeof record.ceoImageUrl === "string" &&
     Array.isArray(record.characterImageUrls) &&
     typeof record.canCreateSeat === "function" &&
     typeof record.onNewSeat === "function" &&

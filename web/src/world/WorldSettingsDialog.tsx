@@ -7,6 +7,7 @@ import {
   hasStoredWorldSettings,
   normalizeWorldCharacterImageUrl,
   normalizeWorldPrometheusUrl,
+  readWorldCeoImageUrl,
   readWorldCharacterImageUrls,
   readWorldLongRoomTitleMode,
   readWorldRoomAlignment,
@@ -19,6 +20,7 @@ import {
 import type { WorldObservabilityConfiguration } from "./worldSettings";
 import type { OfficeLongRoomTitleMode, OfficeRoomAlignment } from "./officeGeometry";
 import {
+  DEFAULT_OFFICE_CEO_IMAGE_URL,
   DEFAULT_OFFICE_CHARACTER_GALLERY,
   DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   OFFICE_CHARACTER_GALLERY_URL,
@@ -48,6 +50,7 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
   const [longRoomTitleMode, setLongRoomTitleMode] = useState<OfficeLongRoomTitleMode>(
     readWorldLongRoomTitleMode,
   );
+  const [ceoImageUrl, setCeoImageUrl] = useState(readWorldCeoImageUrl);
   const [characterImageUrls, setCharacterImageUrls] = useState(readWorldCharacterImageUrls);
   const [characterGallery, setCharacterGallery] = useState(DEFAULT_OFFICE_CHARACTER_GALLERY);
   const [configuration, setConfiguration] = useState<WorldObservabilityConfiguration | null>(null);
@@ -135,6 +138,10 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
     setCharacterImageUrl(index, DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]);
   };
 
+  const setCeoImage = (value: string) => setCeoImageUrl(value);
+
+  const resetCeoImage = () => setCeoImageUrl(DEFAULT_OFFICE_CEO_IMAGE_URL);
+
   const loadCharacterImageFile = async (index: number, file: File | null) => {
     if (!file) {
       return;
@@ -159,6 +166,7 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
     setBusy(true);
     setMessage(null);
     try {
+      const normalizedCeoImageUrl = normalizeWorldCharacterImageUrl(ceoImageUrl) ?? DEFAULT_OFFICE_CEO_IMAGE_URL;
       const normalizedCharacterImageUrls = characterImageUrls.map((url, index) =>
         normalizeWorldCharacterImageUrl(url) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]
       );
@@ -171,7 +179,8 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
         setConfiguration(next);
       }
       writeWorldLayoutSettings({ roomAlignment, longRoomTitleMode });
-      writeWorldCharacterSettings({ imageUrls: normalizedCharacterImageUrls });
+      writeWorldCharacterSettings({ ceoImageUrl: normalizedCeoImageUrl, imageUrls: normalizedCharacterImageUrls });
+      setCeoImageUrl(normalizedCeoImageUrl);
       setCharacterImageUrls(normalizedCharacterImageUrls);
       onSaved?.();
       setMessage(runtime
@@ -307,6 +316,56 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
             GIF, or WebP files. Uploaded images are stored in this browser only.
           </p>
           <div className="world-character-settings-grid">
+            <div className="world-character-setting world-character-setting-ceo">
+              <img
+                className="world-character-setting-preview"
+                src={ceoImageUrl}
+                alt=""
+                aria-hidden="true"
+              />
+              <label className="field-label world-character-setting-field">
+                <span>CEO</span>
+                <input
+                  className="field"
+                  aria-label="CEO image URL"
+                  value={ceoImageUrl}
+                  placeholder={DEFAULT_OFFICE_CEO_IMAGE_URL}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={busy}
+                  onChange={(event) => setCeoImage(event.target.value)}
+                />
+              </label>
+              <details className="world-character-gallery-picker">
+                <summary>Choose CEO from gallery…</summary>
+                <div className="world-character-gallery-options">
+                  {galleryItems.map((item) => (
+                    <button
+                      className="world-character-gallery-option"
+                      type="button"
+                      key={`ceo:${item.collectionLabel}:${item.id}`}
+                      aria-pressed={item.url === ceoImageUrl}
+                      title={`${item.collectionLabel} · ${item.label}`}
+                      disabled={busy}
+                      onClick={() => setCeoImage(item.url)}
+                    >
+                      <img src={item.url} alt="" aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+              <div className="world-character-setting-actions">
+                <button
+                  className="btn btn-small"
+                  type="button"
+                  disabled={busy || ceoImageUrl === DEFAULT_OFFICE_CEO_IMAGE_URL}
+                  onClick={resetCeoImage}
+                >
+                  <RotateCcw size={13} aria-hidden="true" /> Reset
+                </button>
+              </div>
+            </div>
             {characterImageUrls.map((imageUrl, index) => (
               <div className="world-character-setting" key={index + 1}>
                 <img

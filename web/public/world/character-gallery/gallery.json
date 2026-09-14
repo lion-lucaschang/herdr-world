@@ -5,6 +5,7 @@
       "id": "default",
       "label": "Default characters",
       "items": [
+        { "id": "ceo-lobster", "label": "CEO Lobster", "url": "/world/characters/ceo-lobster.png" },
         { "id": "default-1", "label": "Default 1", "url": "/world/characters/1-D-1.png" },
         { "id": "default-2", "label": "Default 2", "url": "/world/characters/2-D-1.png" },
         { "id": "default-3", "label": "Default 3", "url": "/world/characters/3-D-1.png" },

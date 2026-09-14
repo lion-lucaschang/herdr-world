@@ -37,6 +37,7 @@ these SHA-256 values identify the exact copied assets:
 | `10-D-1.png` | `c4d22e7ccec30505873469a2e1cef76cf8435be84d71d3f201d84147de8f5738` |
 | `11-D-1.png` | `6e2c79f2fdb5afe8fd8c1537ba550a8ada9d301e4b493e4a528dbb37d3d4a549` |
 | `12-D-1.png` | `334595aa69f05095faa88227413dcddd6d1a2f177fbaeb625bd78f8dc7bcef34` |
+| `ceo-lobster.png` | `e8c7ce0a3a6c52bd904cc55e31a5b3a8b6392dcd70ba9e220ecf0ef1d6bd8c16` |
 
 The geometry and drawing behavior are TypeScript adaptations of `office-geometry.js`,
 `office-drawing.js`, and the rendering portions of `office-scene.js`; their source hashes at port

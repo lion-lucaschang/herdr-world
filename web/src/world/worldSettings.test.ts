@@ -5,6 +5,7 @@ import {
   normalizeWorldPrometheusUrl,
   normalizeWorldLongRoomTitleMode,
   normalizeWorldRoomAlignment,
+  readWorldCeoImageUrl,
   readWorldCharacterImageUrls,
   readWorldLayoutSettings,
   readWorldLongRoomTitleMode,
@@ -16,7 +17,10 @@ import {
   writeWorldRoomAlignment,
   writeWorldSettings,
 } from "./worldSettings";
-import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
+import {
+  DEFAULT_OFFICE_CEO_IMAGE_URL,
+  DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
+} from "./officeCharacters";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -103,6 +107,7 @@ describe("Office settings", () => {
       }),
     });
 
+    expect(readWorldCeoImageUrl()).toBe(DEFAULT_OFFICE_CEO_IMAGE_URL);
     expect(readWorldCharacterImageUrls()).toEqual(DEFAULT_OFFICE_CHARACTER_IMAGE_URLS);
     expect(normalizeWorldCharacterImageUrl(" /custom/pixel.png#ignored ")).toBe("/custom/pixel.png");
     expect(normalizeWorldCharacterImageUrl("https://cdn.example.test/agent.webp#v1")).toBe(

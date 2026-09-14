@@ -7,6 +7,7 @@ import {
 } from "./officeGeometry";
 import type { OfficeLongRoomTitleMode, OfficeRoomAlignment } from "./officeGeometry";
 import {
+  DEFAULT_OFFICE_CEO_IMAGE_URL,
   DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   OFFICE_CHARACTER_COUNT,
 } from "./officeCharacters";
@@ -32,6 +33,7 @@ export type WorldLayoutSettings = {
 };
 
 export type WorldCharacterSettings = {
+  ceoImageUrl: string;
   imageUrls: string[];
 };
 
@@ -131,13 +133,21 @@ export function normalizeWorldCharacterImageUrl(value: string) {
 }
 
 export function readWorldCharacterSettings(): WorldCharacterSettings {
+  let ceoImageUrl = DEFAULT_OFFICE_CEO_IMAGE_URL;
   const imageUrls = [...DEFAULT_OFFICE_CHARACTER_IMAGE_URLS];
   try {
     const raw = globalThis.localStorage?.getItem(WORLD_CHARACTER_SETTINGS_STORAGE_KEY);
     if (!raw) {
-      return { imageUrls };
+      return { ceoImageUrl, imageUrls };
     }
     const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof parsed.ceoImageUrl === "string") {
+      try {
+        ceoImageUrl = normalizeWorldCharacterImageUrl(parsed.ceoImageUrl) ?? DEFAULT_OFFICE_CEO_IMAGE_URL;
+      } catch {
+        ceoImageUrl = DEFAULT_OFFICE_CEO_IMAGE_URL;
+      }
+    }
     const urls = Array.isArray(parsed.imageUrls) ? parsed.imageUrls : [];
     urls.slice(0, OFFICE_CHARACTER_COUNT).forEach((value, index) => {
       if (typeof value !== "string") {
@@ -152,7 +162,11 @@ export function readWorldCharacterSettings(): WorldCharacterSettings {
   } catch {
     // Browser storage can be unavailable in private or locked-down contexts.
   }
-  return { imageUrls };
+  return { ceoImageUrl, imageUrls };
+}
+
+export function readWorldCeoImageUrl() {
+  return readWorldCharacterSettings().ceoImageUrl;
 }
 
 export function readWorldCharacterImageUrls() {
@@ -161,6 +175,8 @@ export function readWorldCharacterImageUrls() {
 
 export function writeWorldCharacterSettings(patch: Partial<WorldCharacterSettings>) {
   const current = readWorldCharacterSettings();
+  const nextCeoImageUrl = normalizeWorldCharacterImageUrl(patch.ceoImageUrl ?? current.ceoImageUrl) ??
+    DEFAULT_OFFICE_CEO_IMAGE_URL;
   const nextUrls = Array.from({ length: OFFICE_CHARACTER_COUNT }, (_, index) => {
     const candidate = patch.imageUrls?.[index] ?? current.imageUrls[index];
     return normalizeWorldCharacterImageUrl(candidate) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index];
@@ -168,7 +184,7 @@ export function writeWorldCharacterSettings(patch: Partial<WorldCharacterSetting
   try {
     globalThis.localStorage?.setItem(
       WORLD_CHARACTER_SETTINGS_STORAGE_KEY,
-      JSON.stringify({ imageUrls: nextUrls }),
+      JSON.stringify({ ceoImageUrl: nextCeoImageUrl, imageUrls: nextUrls }),
     );
   } catch {
     // Browser storage can be unavailable in private or locked-down contexts.
