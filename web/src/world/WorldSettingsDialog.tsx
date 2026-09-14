@@ -18,7 +18,13 @@ import {
 } from "./worldSettings";
 import type { WorldObservabilityConfiguration } from "./worldSettings";
 import type { OfficeLongRoomTitleMode, OfficeRoomAlignment } from "./officeGeometry";
-import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
+import {
+  DEFAULT_OFFICE_CHARACTER_GALLERY,
+  DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
+  OFFICE_CHARACTER_GALLERY_URL,
+  flattenOfficeCharacterGallery,
+  parseOfficeCharacterGallery,
+} from "./officeCharacters";
 import { trapFocusWithin, useFocusReturn } from "../overlayFocus";
 
 type Props = {
@@ -43,6 +49,7 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
     readWorldLongRoomTitleMode,
   );
   const [characterImageUrls, setCharacterImageUrls] = useState(readWorldCharacterImageUrls);
+  const [characterGallery, setCharacterGallery] = useState(DEFAULT_OFFICE_CHARACTER_GALLERY);
   const [configuration, setConfiguration] = useState<WorldObservabilityConfiguration | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,6 +61,25 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    void fetch(OFFICE_CHARACTER_GALLERY_URL)
+      .then((response) => response.ok ? response.json() : null)
+      .then((value) => {
+        if (!disposed) {
+          setCharacterGallery(parseOfficeCharacterGallery(value));
+        }
+      })
+      .catch(() => {
+        if (!disposed) {
+          setCharacterGallery(DEFAULT_OFFICE_CHARACTER_GALLERY);
+        }
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (selectedBridgeId && bridgeIds.includes(selectedBridgeId)) {
       return;
     }
@@ -61,6 +87,7 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
   }, [bridge.lastSelectedBridgeId, bridgeIds, selectedBridgeId]);
 
   const runtime = selectedBridgeId ? bridge.getRuntime(selectedBridgeId) : null;
+  const galleryItems = flattenOfficeCharacterGallery(characterGallery);
 
   useEffect(() => {
     if (!runtime) {
@@ -290,8 +317,30 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
                 />
                 <label className="field-label world-character-setting-field">
                   <span>Character {index + 1}</span>
+                  <select
+                    className="field"
+                    value={galleryItems.some((item) => item.url === imageUrl) ? imageUrl : ""}
+                    disabled={busy}
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        setCharacterImageUrl(index, event.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">Choose from gallery…</option>
+                    {characterGallery.collections.map((collection) => (
+                      <optgroup key={collection.id} label={collection.label}>
+                        {collection.items.map((item) => (
+                          <option key={`${collection.id}:${item.id}`} value={item.url}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                   <input
                     className="field"
+                    aria-label={`Character ${index + 1} image URL`}
                     value={imageUrl}
                     placeholder={DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]}
                     autoComplete="off"
