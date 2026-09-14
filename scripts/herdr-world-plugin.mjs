@@ -6,6 +6,7 @@ import {
   accessSync,
   chmodSync,
   closeSync,
+  cpSync,
   existsSync,
   mkdirSync,
   openSync,
@@ -26,8 +27,8 @@ import { fileURLToPath } from "node:url";
 export const PLUGIN_ID = "ivoryheart.herdr-world";
 export const PACKAGE_NAME = "@ivoryheart/herdr-world";
 export const MIN_NODE_VERSION = "22.14.0";
-export const MIN_HERDR_VERSION = "0.8.2";
-export const TERMINAL_PROTOCOL = 20;
+export const MIN_HERDR_VERSION = "0.9.0";
+export const TERMINAL_PROTOCOL = 22;
 export const BRIDGE_API_VERSION = 1;
 export const WEB_COMPAT_VERSION = 1;
 export const DEFAULT_PORT = 8787;
@@ -665,6 +666,135 @@ function readManifestVersion(root) {
   return readPluginManifest(root).version;
 }
 
+function canBuildPayloadFromSource(root) {
+  return existsSync(path.join(root, "web", "package.json")) &&
+    existsSync(path.join(root, "bridge", "Cargo.toml")) &&
+    existsSync(path.join(root, "scripts", "npm-launcher.mjs")) &&
+    existsSync(path.join(root, "scripts", "herdr-world-launcher.sh"));
+}
+
+function runPayloadBuildStep(label, command, args, options) {
+  const result = spawnSync(command, args, { ...options, stdio: "inherit" });
+  if (result.error) throw new PluginError(`${label} failed: ${result.error.message}`);
+  if (result.status !== 0) throw new PluginError(`${label} failed with exit status ${result.status}`);
+}
+
+function writeLocalPackageJson(packageRoot, version) {
+  writeFileSync(path.join(packageRoot, "package.json"), `${JSON.stringify({
+    name: PACKAGE_NAME,
+    version,
+    description: "Browser and mobile client for monitoring and controlling Herdr agents.",
+    type: "module",
+    bin: { "herdr-world": "bin/herdr-world" },
+    engines: { node: `>=${MIN_NODE_VERSION}` },
+    license: "MIT",
+    repository: {
+      type: "git",
+      url: "git+https://github.com/lion-lucaschang/herdr-world.git",
+    },
+    files: [
+      "bin/herdr-world",
+      "lib/herdr-world-launcher.sh",
+      "lib/bridges",
+      "share/herdr-world/web",
+      "docs",
+      "vendor",
+      "third_party",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "UPSTREAM.md",
+    ],
+    publishConfig: { access: "public" },
+  }, null, 2)}\n`);
+}
+
+function copyRequiredPath(sourceRoot, relativePath, destinationRoot) {
+  const source = path.join(sourceRoot, relativePath);
+  if (!existsSync(source)) throw new PluginError(`source-built payload is missing ${relativePath}`);
+  cpSync(source, path.join(destinationRoot, relativePath), { recursive: true });
+}
+
+function buildPayloadFromSource({ root, manifest, target, env, node, npm, cargo }) {
+  const prefix = path.join(root, ".herdr-world-plugin");
+  const packageRoot = path.join(prefix, "node_modules", "@ivoryheart", "herdr-world");
+  const binRoot = path.join(prefix, "node_modules", ".bin");
+  const bridgeTargetDir = path.join(root, "bridge", "target");
+  rmSync(prefix, { recursive: true, force: true });
+  ensureDirectory(prefix);
+
+  try {
+    runPayloadBuildStep("root npm install", npm, ["install"], { cwd: root, env: { ...env } });
+    runPayloadBuildStep("web npm install", npm, ["install", "--prefix", "web"], { cwd: root, env: { ...env } });
+    runPayloadBuildStep("web build", npm, ["run", "build:web"], { cwd: root, env: { ...env } });
+    runPayloadBuildStep("native bridge build", cargo, [
+      "build",
+      "--release",
+      "--target-dir",
+      bridgeTargetDir,
+      "--manifest-path",
+      path.join(root, "bridge", "Cargo.toml"),
+      "--bin",
+      "herdr-web-bridge",
+    ], { cwd: root, env: { ...env } });
+
+    ensureDirectory(packageRoot);
+    ensureDirectory(binRoot);
+    ensureDirectory(path.join(packageRoot, "bin"));
+    ensureDirectory(path.join(packageRoot, "lib", "bridges", target.target));
+    ensureDirectory(path.join(packageRoot, "share", "herdr-world", "web"));
+    ensureDirectory(path.join(packageRoot, "docs"));
+    ensureDirectory(path.join(packageRoot, "vendor", "herdr-compat"));
+
+    cpSync(path.join(root, "scripts", "npm-launcher.mjs"), path.join(packageRoot, "bin", "herdr-world"));
+    cpSync(path.join(root, "scripts", "herdr-world-launcher.sh"), path.join(packageRoot, "lib", "herdr-world-launcher.sh"));
+    cpSync(
+      path.join(bridgeTargetDir, "release", "herdr-web-bridge"),
+      path.join(packageRoot, "lib", "bridges", target.target, "herdr-world-bridge"),
+    );
+    cpSync(path.join(root, "web", "dist"), path.join(packageRoot, "share", "herdr-world", "web"), { recursive: true });
+    copyRequiredPath(root, "LICENSE", packageRoot);
+    copyRequiredPath(root, "THIRD_PARTY_NOTICES.md", packageRoot);
+    copyRequiredPath(root, "UPSTREAM.md", packageRoot);
+    copyRequiredPath(root, "docs/world-assets.md", packageRoot);
+    copyRequiredPath(root, "vendor/herdr-compat/VENDOR-MANIFEST.toml", packageRoot);
+    copyRequiredPath(root, "third_party/licenses", packageRoot);
+    copyRequiredPath(root, "third_party/dependencies", packageRoot);
+    writeLocalPackageJson(packageRoot, manifest.version);
+    writeFileSync(
+      path.join(binRoot, "herdr-world"),
+      `#!/usr/bin/env node
+import { runPackageLauncher } from "../@ivoryheart/herdr-world/bin/herdr-world";
+
+try {
+  const result = runPackageLauncher();
+  if (!result) process.exit(0);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+`,
+    );
+    for (const executablePath of [
+      path.join(packageRoot, "bin", "herdr-world"),
+      path.join(packageRoot, "lib", "herdr-world-launcher.sh"),
+      path.join(packageRoot, "lib", "bridges", target.target, "herdr-world-bridge"),
+      path.join(binRoot, "herdr-world"),
+    ]) {
+      chmodSync(executablePath, 0o755);
+    }
+
+    const payload = validatePayload(root, manifest.version, target.target);
+    console.log(`Built ${PACKAGE_NAME}@${manifest.version} from source for ${target.target}`);
+    console.log(`  payload: ${payload.packageRoot}`);
+    console.log(`  Node.js: ${node.version} (${node.path})`);
+    return payload;
+  } catch (error) {
+    rmSync(prefix, { recursive: true, force: true });
+    if (error instanceof PluginError) throw error;
+    throw new PluginError(`source payload build failed: ${error.message}`);
+  }
+}
+
 export function buildPayload({ root = ROOT, env = process.env, nodePath, npmPath, platform = process.platform, arch = process.arch, glibcVersion } = {}) {
   const manifest = readPluginManifest(root);
   const target = selectTarget({ platform, arch, glibcVersion });
@@ -674,6 +804,15 @@ export function buildPayload({ root = ROOT, env = process.env, nodePath, npmPath
     toolVersion(npm, ["--version"]);
   } catch (error) {
     throw new PluginError(`npm is unavailable: ${error.message}`);
+  }
+  if (!env.HERDR_WORLD_PLUGIN_PACKAGE && env.HERDR_WORLD_PLUGIN_BUILD_FROM_SOURCE !== "0" && canBuildPayloadFromSource(root)) {
+    const cargo = resolveExecutable("cargo", { env, explicitPath: env.HERDR_WORLD_CARGO_PATH });
+    try {
+      toolVersion(cargo, ["--version"]);
+    } catch (error) {
+      throw new PluginError(`cargo is unavailable for source payload build: ${error.message}`);
+    }
+    return buildPayloadFromSource({ root, manifest, target, env, node, npm, cargo });
   }
   const prefix = path.join(root, ".herdr-world-plugin");
   let packageSpec = `${PACKAGE_NAME}@${manifest.version}`;

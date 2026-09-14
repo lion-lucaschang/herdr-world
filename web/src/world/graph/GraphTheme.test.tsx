@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WorldThemeContext } from "../worldThemeContext";
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "../officeCharacters";
 import type { HerdrGraphProjection, WorldGraphNode } from "./herdrGraphProjection";
 import GraphTheme from "./GraphTheme";
 
@@ -166,6 +167,7 @@ function context(): WorldThemeContext {
     agentActivityTransitions: new Map(),
     roomAlignment: "left",
     longRoomTitleMode: "expand",
+    characterImageUrls: DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
     canCreateSeat: () => false,
     onNewSeat: vi.fn(),
     canCreateRoom: () => false,

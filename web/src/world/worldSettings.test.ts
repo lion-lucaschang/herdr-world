@@ -1,18 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   hasStoredWorldSettings,
+  normalizeWorldCharacterImageUrl,
   normalizeWorldPrometheusUrl,
   normalizeWorldLongRoomTitleMode,
   normalizeWorldRoomAlignment,
+  readWorldCharacterImageUrls,
   readWorldLayoutSettings,
   readWorldLongRoomTitleMode,
   readWorldSettings,
   readWorldRoomAlignment,
+  writeWorldCharacterImageUrl,
   writeWorldLayoutSettings,
   writeWorldLongRoomTitleMode,
   writeWorldRoomAlignment,
   writeWorldSettings,
 } from "./worldSettings";
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -87,6 +91,32 @@ describe("Office settings", () => {
     writeWorldLongRoomTitleMode("expand");
     expect(readWorldLayoutSettings()).toEqual({ roomAlignment: "right", longRoomTitleMode: "expand" });
     expect(readWorldLongRoomTitleMode()).toBe("expand");
+  });
+
+  it("stores optional character image replacements with safe normalization", () => {
+    let value: string | null = null;
+    vi.stubGlobal("location", { origin: "http://127.0.0.1:8787" });
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => value),
+      setItem: vi.fn((_key: string, next: string) => {
+        value = next;
+      }),
+    });
+
+    expect(readWorldCharacterImageUrls()).toEqual(DEFAULT_OFFICE_CHARACTER_IMAGE_URLS);
+    expect(normalizeWorldCharacterImageUrl(" /custom/pixel.png#ignored ")).toBe("/custom/pixel.png");
+    expect(normalizeWorldCharacterImageUrl("https://cdn.example.test/agent.webp#v1")).toBe(
+      "https://cdn.example.test/agent.webp",
+    );
+    expect(() => normalizeWorldCharacterImageUrl("file:///Users/me/agent.png")).toThrow(/http/u);
+    expect(() => normalizeWorldCharacterImageUrl("https://user:secret@example.test/agent.png")).toThrow(
+      /credentials/u,
+    );
+
+    writeWorldCharacterImageUrl(1, " /custom/agent-2.png?rev=1 ");
+    const urls = readWorldCharacterImageUrls();
+    expect(urls[0]).toBe(DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[0]);
+    expect(urls[1]).toBe("/custom/agent-2.png?rev=1");
   });
 
   it("normalizes missing or malformed sibling values independently", () => {

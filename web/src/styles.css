@@ -4764,6 +4764,58 @@ button {
   line-height: 1.5;
 }
 
+.world-character-settings-grid {
+  display: grid;
+  gap: 10px;
+  max-height: min(44vh, 480px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.world-character-setting {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: rgb(255 255 255 / 0.025);
+}
+
+.world-character-setting-preview {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.world-character-setting-field {
+  min-width: 0;
+}
+
+.world-character-setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2;
+  gap: 6px;
+}
+
+.world-character-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.world-character-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .remote-access-settings {
   max-width: 620px;
 }
@@ -5311,6 +5363,14 @@ button {
   font-size: 13px;
   font-weight: 500;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease, filter 120ms ease;
+}
+
+.btn-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  font-size: 12px;
 }
 
 .btn:hover {

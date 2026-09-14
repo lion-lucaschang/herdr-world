@@ -1,17 +1,17 @@
 use std::fmt::Debug;
 
 use herdr_compat::protocol::{
-    read_message, write_message, ClientKeybindings, ClientLaunchMode, ClientMessage, FramingError,
-    RenderEncoding, ServerMessage, MAX_FRAME_SIZE, PROTOCOL_VERSION,
+    read_message, write_message, ClientMessage, FramingError, RenderEncoding, ServerMessage,
+    MAX_FRAME_SIZE, PROTOCOL_VERSION,
 };
 use serde::{de::DeserializeOwned, Serialize};
 
 fn fixture(name: &str) -> Vec<u8> {
-    include_str!("fixtures/protocol20-frames.hex")
+    include_str!("fixtures/protocol22-frames.hex")
         .lines()
         .filter_map(|line| line.strip_prefix(&format!("{name}=")))
         .next()
-        .unwrap_or_else(|| panic!("missing protocol20 fixture {name}"))
+        .unwrap_or_else(|| panic!("missing protocol22 fixture {name}"))
         .as_bytes()
         .chunks(2)
         .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
@@ -27,26 +27,24 @@ where
     write_message(&mut encoded, &message).unwrap();
     assert_eq!(
         encoded, expected,
-        "frozen protocol-20 frame changed: {name}"
+        "frozen protocol-22 frame changed: {name}"
     );
     let decoded: T = read_message(&mut expected.as_slice(), MAX_FRAME_SIZE).unwrap();
     assert_eq!(decoded, message);
 }
 
 #[test]
-fn protocol20_frozen_frames_cover_new_wire_shape() {
-    assert_eq!(PROTOCOL_VERSION, 20);
+fn protocol22_frozen_frames_cover_terminal_attach_wire_shape() {
+    assert_eq!(PROTOCOL_VERSION, 22);
     assert_frame(
-        "hello",
-        ClientMessage::Hello {
+        "terminal_hello",
+        ClientMessage::TerminalHello {
             version: PROTOCOL_VERSION,
             cols: 80,
             rows: 24,
             cell_width_px: 0,
             cell_height_px: 0,
-            requested_encoding: RenderEncoding::TerminalAnsi,
-            keybindings: ClientKeybindings::Server,
-            launch_mode: ClientLaunchMode::TerminalAttach,
+            pixel_mouse: false,
         },
     );
     assert_frame(
@@ -81,16 +79,6 @@ fn protocol20_frozen_frames_cover_new_wire_shape() {
         },
     );
     assert_frame(
-        "input_pixels",
-        ClientMessage::InputPixels {
-            data: b"\x1b[<35;321;241M".to_vec(),
-            cols: 80,
-            rows: 24,
-            width_px: 800,
-            height_px: 480,
-        },
-    );
-    assert_frame(
         "graphics_file",
         ServerMessage::GraphicsFile {
             path: "/tmp/frame".into(),
@@ -99,6 +87,7 @@ fn protocol20_frozen_frames_cover_new_wire_shape() {
             transfer_id: 7,
             leading: b"\x1b[2;3H".to_vec(),
             control: "a=T,f=32,i=42,q=0".into(),
+            surface_asset: None,
         },
     );
     assert_frame(
@@ -111,30 +100,37 @@ fn protocol20_frozen_frames_cover_new_wire_shape() {
 }
 
 #[test]
-fn protocol20_enum_discriminants_keep_terminal_attach_after_direct_graphics_mode() {
-    let hello = ClientMessage::Hello {
+fn protocol22_enum_discriminants_keep_terminal_attach_after_direct_graphics_mode() {
+    let hello = ClientMessage::TerminalHello {
         version: PROTOCOL_VERSION,
         cols: 80,
         rows: 24,
         cell_width_px: 0,
         cell_height_px: 0,
-        requested_encoding: RenderEncoding::TerminalAnsi,
-        keybindings: ClientKeybindings::Server,
-        launch_mode: ClientLaunchMode::TerminalAttach,
+        pixel_mouse: false,
     };
     let payload = bincode::serde::encode_to_vec(&hello, bincode::config::standard()).unwrap();
-    assert_eq!(payload, [0, 20, 80, 24, 0, 0, 1, 0, 2]);
+    assert_eq!(payload, [0, 22, 80, 24, 0, 0, 0]);
 
-    let app_direct = bincode::serde::encode_to_vec(
-        &ClientLaunchMode::AppDirectGraphics,
+    let client_shell_hello = bincode::serde::encode_to_vec(
+        &ClientMessage::ClientShellHello {
+            version: PROTOCOL_VERSION,
+            cell_width_px: 0,
+            cell_height_px: 0,
+            surface_size: herdr_compat::protocol::ClientSurfaceSize { cols: 80, rows: 24 },
+            pixel_mouse: false,
+            direct_graphics: true,
+            endpoint_keybindings: false,
+            mouse_capture: false,
+        },
         bincode::config::standard(),
     )
     .unwrap();
-    assert_eq!(app_direct, [1]);
+    assert_eq!(client_shell_hello.first().copied(), Some(11));
 }
 
 #[test]
-fn protocol20_fixture_reader_rejects_trailing_payload_bytes() {
+fn protocol22_fixture_reader_rejects_trailing_payload_bytes() {
     let mut frame = fixture("welcome");
     frame[0] += 1;
     frame.push(0);

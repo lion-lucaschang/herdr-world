@@ -1,20 +1,24 @@
-import { Building2, CheckCircle2, CircleOff, X } from "lucide-react";
+import { Building2, CheckCircle2, CircleOff, RotateCcw, Upload, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { SAME_ORIGIN_BRIDGE_ID, useBridge } from "../bridge";
 import type { BridgeId } from "../bridge";
 import {
   fetchWorldObservabilityConfiguration,
   hasStoredWorldSettings,
+  normalizeWorldCharacterImageUrl,
   normalizeWorldPrometheusUrl,
+  readWorldCharacterImageUrls,
   readWorldLongRoomTitleMode,
   readWorldRoomAlignment,
   readWorldSettings,
   updateWorldObservabilityConfiguration,
+  writeWorldCharacterSettings,
   writeWorldLayoutSettings,
   writeWorldSettings,
 } from "./worldSettings";
 import type { WorldObservabilityConfiguration } from "./worldSettings";
 import type { OfficeLongRoomTitleMode, OfficeRoomAlignment } from "./officeGeometry";
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
 import { trapFocusWithin, useFocusReturn } from "../overlayFocus";
 
 type Props = {
@@ -38,6 +42,7 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
   const [longRoomTitleMode, setLongRoomTitleMode] = useState<OfficeLongRoomTitleMode>(
     readWorldLongRoomTitleMode,
   );
+  const [characterImageUrls, setCharacterImageUrls] = useState(readWorldCharacterImageUrls);
   const [configuration, setConfiguration] = useState<WorldObservabilityConfiguration | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -95,10 +100,41 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
     };
   }, [runtime]);
 
+  const setCharacterImageUrl = (index: number, value: string) => {
+    setCharacterImageUrls((current) => current.map((url, itemIndex) => itemIndex === index ? value : url));
+  };
+
+  const resetCharacterImageUrl = (index: number) => {
+    setCharacterImageUrl(index, DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]);
+  };
+
+  const loadCharacterImageFile = async (index: number, file: File | null) => {
+    if (!file) {
+      return;
+    }
+    if (!/^image\/(?:gif|jpeg|png|webp)$/u.test(file.type)) {
+      setMessage("Character image files must be PNG, JPEG, GIF, or WebP.");
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setCharacterImageUrl(index, normalizeWorldCharacterImageUrl(dataUrl) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load character image");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const save = async () => {
     setBusy(true);
     setMessage(null);
     try {
+      const normalizedCharacterImageUrls = characterImageUrls.map((url, index) =>
+        normalizeWorldCharacterImageUrl(url) ?? DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]
+      );
       let normalized: string | null = null;
       if (runtime) {
         normalized = normalizeWorldPrometheusUrl(prometheusUrl);
@@ -108,10 +144,12 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
         setConfiguration(next);
       }
       writeWorldLayoutSettings({ roomAlignment, longRoomTitleMode });
+      writeWorldCharacterSettings({ imageUrls: normalizedCharacterImageUrls });
+      setCharacterImageUrls(normalizedCharacterImageUrls);
       onSaved?.();
       setMessage(runtime
-        ? normalized ? "Prometheus URL saved." : "Prometheus provider disabled."
-        : "Office layout saved.");
+        ? normalized ? "Office settings saved." : "Office settings saved; Prometheus provider disabled."
+        : "Office layout and characters saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save Office settings");
     } finally {
@@ -235,6 +273,59 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
               <option value="right">Right</option>
             </select>
           </label>
+
+          <div className="settings-label">Character images</div>
+          <p className="settings-help">
+            Replace the twelve Pixel Office character slots with image URLs or uploaded PNG, JPEG,
+            GIF, or WebP files. Uploaded images are stored in this browser only.
+          </p>
+          <div className="world-character-settings-grid">
+            {characterImageUrls.map((imageUrl, index) => (
+              <div className="world-character-setting" key={index + 1}>
+                <img
+                  className="world-character-setting-preview"
+                  src={imageUrl}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <label className="field-label world-character-setting-field">
+                  <span>Character {index + 1}</span>
+                  <input
+                    className="field"
+                    value={imageUrl}
+                    placeholder={DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={busy}
+                    onChange={(event) => setCharacterImageUrl(index, event.target.value)}
+                  />
+                </label>
+                <div className="world-character-setting-actions">
+                  <label className="btn btn-small world-character-upload">
+                    <Upload size={13} aria-hidden="true" /> Upload
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp"
+                      disabled={busy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        event.target.value = "";
+                        void loadCharacterImageFile(index, file);
+                      }}
+                    />
+                  </label>
+                  <button
+                    className="btn btn-small"
+                    type="button"
+                    disabled={busy || imageUrl === DEFAULT_OFFICE_CHARACTER_IMAGE_URLS[index]}
+                    onClick={() => resetCharacterImageUrl(index)}
+                  >
+                    <RotateCcw size={13} aria-hidden="true" /> Reset
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
           {message ? <div className="modal-message">{message}</div> : null}
         </div>
         <div className="modal-actions">
@@ -246,4 +337,21 @@ export function WorldSettingsDialog({ onClose, onSaved }: Props) {
       </form>
     </div>
   );
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Could not read character image"));
+      }
+    }, { once: true });
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("Could not read character image")), {
+      once: true,
+    });
+    reader.readAsDataURL(file);
+  });
 }

@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPAT="$ROOT/vendor/herdr-compat"
-EXPECTED_HERDR_COMMIT="9eb521456ac0d19d3ab3d9d7cea3cca10baa8a4c"
-EXPECTED_HERDR_RELEASE="v0.8.2"
+EXPECTED_HERDR_COMMIT="b99002ac99b09e00b4ca692436cb15a6b0d676f1"
+EXPECTED_HERDR_RELEASE="v0.9.0"
 
 # This is the reviewed bridge compatibility surface. Keep the set explicit so
 # deleting a manifest entry cannot silently narrow the provenance claim.
@@ -12,6 +12,7 @@ EXPECTED_MANIFEST_ENTRIES=(
   "src/api/schema.rs|src/api/schema.rs"
   "src/api/schema/agents.rs|src/api/schema/agents.rs"
   "src/api/schema/common.rs|src/api/schema/common.rs"
+  "src/api/schema/commands.rs|src/api/schema/commands.rs"
   "src/api/schema/events.rs|src/api/schema/events.rs"
   "src/api/schema/integrations.rs|src/api/schema/integrations.rs"
   "src/api/schema/panes.rs|src/api/schema/panes.rs"
@@ -26,12 +27,15 @@ EXPECTED_MANIFEST_ENTRIES=(
   "src/api/status.rs|src/api/status.rs"
   "src/api/schema/tabs.rs|src/api/schema/tabs.rs"
   "src/api/schema/workspaces.rs|src/api/schema/workspaces.rs"
-  "src/input/model.rs|src/input.rs"
+  "src/input/mod.rs|src/input.rs"
+  "src/input/encode.rs|src/input/encode.rs"
+  "src/input/model.rs|src/input/model.rs"
   "src/raw_input.rs|src/raw_input.rs"
   "src/ipc.rs|src/ipc.rs"
   "src/logging.rs|src/logging.rs"
   "src/popup_size.rs|src/popup_size.rs"
   "src/server/socket_paths.rs|src/server/socket_paths.rs"
+  "src/terminal_theme.rs|src/terminal_theme.rs"
 )
 
 if ! command -v rg >/dev/null; then
@@ -49,6 +53,7 @@ required=(
   "$COMPAT/src/api/schema"
   "$COMPAT/src/api/schema/agents.rs"
   "$COMPAT/src/api/schema/common.rs"
+  "$COMPAT/src/api/schema/commands.rs"
   "$COMPAT/src/api/schema/events.rs"
   "$COMPAT/src/api/schema/integrations.rs"
   "$COMPAT/src/api/schema/panes.rs"
@@ -62,12 +67,15 @@ required=(
   "$COMPAT/src/api/schema/worktrees.rs"
   "$COMPAT/src/ipc.rs"
   "$COMPAT/src/input.rs"
+  "$COMPAT/src/input/encode.rs"
+  "$COMPAT/src/input/model.rs"
   "$COMPAT/src/logging.rs"
   "$COMPAT/src/popup_size.rs"
   "$COMPAT/src/protocol.rs"
   "$COMPAT/src/protocol/wire.rs"
   "$COMPAT/src/raw_input.rs"
   "$COMPAT/src/server/socket_paths.rs"
+  "$COMPAT/src/terminal_theme.rs"
 )
 
 for path in "${required[@]}"; do
@@ -89,7 +97,7 @@ if rg -n '#\[path[[:space:]]*=' "$ROOT/bridge" "$COMPAT" >/dev/null; then
 fi
 
 if rg -n '\bcustom_status\b' "$COMPAT" >/dev/null; then
-  echo "obsolete custom_status fields are not allowed in the Herdr 0.8.2 compatibility copy" >&2
+  echo "obsolete custom_status fields are not allowed in the Herdr 0.9.0 compatibility copy" >&2
   rg -n '\bcustom_status\b' "$COMPAT" >&2
   exit 1
 fi
@@ -223,7 +231,7 @@ verify_manifest_hashes() {
   local actual_source_hash actual_destination_hash
   local entry_count=0
   local expected_entry expected_source expected_destination manifest_key
-  declare -A actual_manifest_entries=()
+  local actual_manifest_keys=""
 
   if ! manifest_entries="$(parse_manifest_entries)"; then
     return 1
@@ -236,7 +244,8 @@ verify_manifest_hashes() {
       return 1
     fi
     manifest_key="$source|$destination"
-    actual_manifest_entries["$manifest_key"]=1
+    actual_manifest_keys="${actual_manifest_keys}${manifest_key}
+"
     actual_destination_hash="$(sha256sum "$COMPAT/$destination" | awk '{print $1}')"
     if [[ "$actual_destination_hash" != "$expected_destination_hash" ]]; then
       echo "manifest destination hash mismatch for $destination" >&2
@@ -273,7 +282,7 @@ verify_manifest_hashes() {
     expected_source="${expected_entry%%|*}"
     expected_destination="${expected_entry#*|}"
     manifest_key="$expected_source|$expected_destination"
-    if [[ -z "${actual_manifest_entries[$manifest_key]+present}" ]]; then
+    if ! printf '%s' "$actual_manifest_keys" | grep -Fxq "$manifest_key"; then
       echo "vendor manifest is missing expected entry: $expected_source -> $expected_destination" >&2
       return 1
     fi
@@ -303,13 +312,13 @@ if [[ -n "${HERDR_SRC:-}" ]]; then
 
   upstream_commit="$(git -C "$HERDR_SRC" rev-parse HEAD 2>/dev/null || true)"
   if [[ "$upstream_commit" != "$EXPECTED_HERDR_COMMIT" ]]; then
-    echo "HERDR_SRC must be a Herdr v0.8.2 checkout at $EXPECTED_HERDR_COMMIT" >&2
+    echo "HERDR_SRC must be a Herdr v0.9.0 checkout at $EXPECTED_HERDR_COMMIT" >&2
     echo "found: ${upstream_commit:-not a git checkout}" >&2
     exit 1
   fi
 
   if [[ -n "$(git -C "$HERDR_SRC" status --short)" ]]; then
-    echo "HERDR_SRC must be a clean Herdr v0.8.2 checkout" >&2
+    echo "HERDR_SRC must be a clean Herdr v0.9.0 checkout" >&2
     git -C "$HERDR_SRC" status --short >&2
     exit 1
   fi
@@ -327,18 +336,18 @@ if [[ -n "${HERDR_SRC:-}" ]]; then
   }
 
   check_terminal_attach_protocol() {
-    if ! rg -q '^pub const PROTOCOL_VERSION: u32 = 20;' "$COMPAT/src/protocol/wire.rs"; then
-      echo "terminal attach compatibility copy must advertise Herdr protocol 20" >&2
+    if ! rg -q '^pub const PROTOCOL_VERSION: u32 = 22;' "$COMPAT/src/protocol/wire.rs"; then
+      echo "terminal attach compatibility copy must advertise Herdr protocol 22" >&2
       exit 1
     fi
-    for marker in AppDirectGraphics GraphicsTransmissionResult InputPixels GraphicsTransmissionStarted TerminalBell GraphicsFile GraphicsTransmissionRetired 'sgr_pixels: bool'; do
+    for marker in TerminalHello AttachMouse GraphicsTransmissionResult GraphicsTransmissionStarted TerminalBell GraphicsFile GraphicsTransmissionRetired DirectTerminalKeyboardProtocol 'sgr_pixels: bool'; do
       if ! rg -q "$marker" "$COMPAT/src/protocol/wire.rs"; then
-        echo "terminal attach compatibility copy is missing protocol-20 marker: $marker" >&2
+        echo "terminal attach compatibility copy is missing protocol-22 marker: $marker" >&2
         exit 1
       fi
     done
-    if ! rg -q 'TerminalAttach' "$COMPAT/src/protocol/wire.rs"; then
-      echo "terminal attach compatibility copy is missing TerminalAttach" >&2
+    if ! rg -q 'AttachTerminal' "$COMPAT/src/protocol/wire.rs"; then
+      echo "terminal attach compatibility copy is missing AttachTerminal" >&2
       exit 1
     fi
   }
@@ -385,5 +394,5 @@ if [[ -n "${HERDR_SRC:-}" ]]; then
 else
   verify_manifest_hashes
   echo "Herdr $EXPECTED_HERDR_RELEASE compatibility vendor layout and manifest hashes look clean"
-  echo "Set HERDR_SRC=/path/to/clean/herdr-v0.8.2 to compare exact upstream schema/wire copies"
+  echo "Set HERDR_SRC=/path/to/clean/herdr-v0.9.0 to compare exact upstream schema/wire copies"
 fi

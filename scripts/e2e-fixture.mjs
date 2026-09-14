@@ -321,7 +321,7 @@ function capabilities(fixture, state) {
   return {
     bridge_api_version: 1,
     bridge_version: "0.1.0",
-    herdr_version: "0.8.2",
+    herdr_version: "0.9.0",
     terminal_protocol:
       state.terminalProtocol ?? (fixture.variant === "incompatible" ? 19 : 20),
     configured_label: fixture.label,

@@ -34,13 +34,13 @@ through `--static-dir`.
 ## Current Reference
 
 - Upstream checkout: a clean Herdr source checkout outside this repository
-- Upstream release baseline: `v0.8.2`
-- Release commit: `9eb521456ac0d19d3ab3d9d7cea3cca10baa8a4c`
-- Terminal wire baseline: protocol `20`
+- Upstream release baseline: `v0.9.0`
+- Release commit: `b99002ac99b09e00b4ca692436cb15a6b0d676f1`
+- Terminal wire baseline: protocol `22`
 - License: Apache-2.0; see [`vendor/herdr-compat/VENDOR-MANIFEST.toml`](../vendor/herdr-compat/VENDOR-MANIFEST.toml)
 
 The vendored API/schema and terminal-wire compatibility copies are reviewed against the exact
-Herdr `v0.8.2` release commit and protocol `20`. The bridge keeps only the narrow compatibility
+Herdr `v0.9.0` release commit and protocol `22`. The bridge keeps only the narrow compatibility
 surface it needs; the full Herdr source tree remains an external audit reference.
 
 Use the upstream checkout as an external reference for audits and refreshes. It is not required to
@@ -169,8 +169,8 @@ the refit button after changing browser sizes.
 
 ## Compatibility Policy
 
-The bridge pings Herdr's status API at startup and requires Herdr `v0.8.2` or newer with daemon
-protocol exactly `20`. Protocol 19, protocol 21, missing protocol, invalid versions, and other
+The bridge pings Herdr's status API at startup and requires Herdr `v0.9.0` or newer with daemon
+protocol exactly `22`. Protocol 20, protocol 21, missing protocol, invalid versions, and other
 unreviewed combinations are rejected before terminal attach with bounded diagnostics. The version
 floor covers the private JSON API shape, including the managed
 `agent.start` contract; the exact protocol check protects the copied bincode terminal wire format.

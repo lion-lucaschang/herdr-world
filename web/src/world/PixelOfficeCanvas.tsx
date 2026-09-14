@@ -10,6 +10,7 @@ import type {
 } from "./officeGeometry";
 import type { PublishedOfficeLayout } from "./officeLayout";
 import { officeDebug } from "../officeDebug";
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
 
 export type OfficeCanvasAnchor = {
   x: number;
@@ -51,6 +52,7 @@ export function PixelOfficeCanvas({
   onCanvasRendered,
   roomAlignment,
   longRoomTitleMode,
+  characterImageUrls = DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   children,
 }: {
   projection: HerdrOfficeProjection;
@@ -70,6 +72,7 @@ export function PixelOfficeCanvas({
   onCanvasRendered?: (revision: number) => void;
   roomAlignment: OfficeRoomAlignment;
   longRoomTitleMode: OfficeLongRoomTitleMode;
+  characterImageUrls?: readonly string[];
   children?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -92,6 +95,7 @@ export function PixelOfficeCanvas({
     onCanvasRendered,
     roomAlignment,
     longRoomTitleMode,
+    characterImageUrls,
   });
   const [failure, setFailure] = useState(false);
   latestRef.current = {
@@ -112,6 +116,7 @@ export function PixelOfficeCanvas({
     onCanvasRendered,
     roomAlignment,
     longRoomTitleMode,
+    characterImageUrls,
   };
 
   const reportAnchors = () => {
@@ -239,6 +244,7 @@ export function PixelOfficeCanvas({
       (revision) => latestRef.current.onCanvasRendered?.(revision),
       latestRef.current.roomAlignment,
       latestRef.current.longRoomTitleMode,
+      latestRef.current.characterImageUrls,
     )
       .then((controller) => {
         if (disposed) {
@@ -280,7 +286,7 @@ export function PixelOfficeCanvas({
       controllerRef.current?.destroy();
       controllerRef.current = null;
     };
-  }, []);
+  }, [characterImageUrls]);
 
   useEffect(() => {
     controllerRef.current?.update(

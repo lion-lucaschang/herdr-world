@@ -8,6 +8,7 @@ import type { HerdrOfficeProjection } from "./herdrOfficeProjection";
 import type { PublishedOfficeLayout } from "./officeLayout";
 import WorldSurface from "./WorldSurface";
 import type { WorldSurfaceContext } from "./WorldSurface";
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
 
 const roots: Root[] = [];
 
@@ -200,6 +201,7 @@ function context(): WorldSurfaceContext {
     agentActivityTransitions: new Map(),
     roomAlignment: "left",
     longRoomTitleMode: "expand",
+    characterImageUrls: DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
     canCreateSeat: () => false,
     onNewSeat: vi.fn(),
     canCreateRoom: () => false,

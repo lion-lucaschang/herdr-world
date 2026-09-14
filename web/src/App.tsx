@@ -4767,6 +4767,7 @@ export function App() {
     agentActivityTransitions,
     roomAlignment: worldSettingsController.roomAlignment,
     longRoomTitleMode: worldSettingsController.longRoomTitleMode,
+    characterImageUrls: worldSettingsController.characterImageUrls,
     canCreateSeat: worldRoomActions.canCreateSeat,
     onNewSeat: worldRoomActions.openNewSeat,
     canCreateRoom: worldRoomActions.canCreateRoom,

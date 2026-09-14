@@ -10,6 +10,7 @@ import {
 import type { OfficeObservability } from "./officeObservability";
 import {
   hasStoredWorldSettings,
+  readWorldCharacterImageUrls,
   readWorldLongRoomTitleMode,
   readWorldRoomAlignment,
   readWorldSettings,
@@ -20,6 +21,7 @@ export type WorldSettingsController = {
   observability: OfficeObservability;
   roomAlignment: OfficeRoomAlignment;
   longRoomTitleMode: OfficeLongRoomTitleMode;
+  characterImageUrls: readonly string[];
   isOpen: boolean;
   open: () => void;
   close: () => void;
@@ -42,6 +44,7 @@ export function useWorldSettingsController({
   );
   const [roomAlignment, setRoomAlignment] = useState(readWorldRoomAlignment);
   const [longRoomTitleMode, setLongRoomTitleMode] = useState(readWorldLongRoomTitleMode);
+  const [characterImageUrls, setCharacterImageUrls] = useState(readWorldCharacterImageUrls);
   const [isOpen, setOpen] = useState(false);
   const [observabilityRevision, setObservabilityRevision] = useState(0);
   const appliedSettingsRef = useRef(new Map<string, string>());
@@ -56,6 +59,7 @@ export function useWorldSettingsController({
     setObservabilityRevision((revision) => revision + 1);
     setRoomAlignment(readWorldRoomAlignment());
     setLongRoomTitleMode(readWorldLongRoomTitleMode());
+    setCharacterImageUrls(readWorldCharacterImageUrls());
   }, []);
 
   const synchronizeStoredSettings = useCallback(async (
@@ -138,6 +142,7 @@ export function useWorldSettingsController({
     observability,
     roomAlignment,
     longRoomTitleMode,
+    characterImageUrls,
     isOpen,
     open,
     close,

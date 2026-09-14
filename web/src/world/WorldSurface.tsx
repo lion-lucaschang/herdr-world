@@ -10,6 +10,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { SurfaceComponentProps } from "../surfaceRegistry";
 import { PixelOfficeCanvas } from "./PixelOfficeCanvas";
+import {
+  DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
+  officeCharacterImageUrlAt,
+} from "./officeCharacters";
 import type {
   OfficeConversationAnchors,
   OfficeConversationAnchorTarget,
@@ -57,6 +61,7 @@ export type WorldSurfaceContext = {
   agentActivityTransitions: ReadonlyMap<string, number>;
   roomAlignment: OfficeRoomAlignment;
   longRoomTitleMode: OfficeLongRoomTitleMode;
+  characterImageUrls: readonly string[];
   canCreateSeat: (roomKey: string) => boolean;
   onNewSeat: (roomKey?: string) => void;
   canCreateRoom: (roomKey?: string) => boolean;
@@ -140,6 +145,7 @@ const FALLBACK_CONTEXT: WorldSurfaceContext = {
   agentActivityTransitions: new Map(),
   roomAlignment: "left",
   longRoomTitleMode: "expand",
+  characterImageUrls: DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
   canCreateSeat: () => false,
   onNewSeat: () => {},
   canCreateRoom: () => false,
@@ -474,6 +480,7 @@ function WorldStage({
           onCanvasRendered={setCanvasRenderedRevision}
           roomAlignment={context.roomAlignment}
           longRoomTitleMode={context.longRoomTitleMode}
+          characterImageUrls={context.characterImageUrls}
           onHover={onCanvasHover}
           onAnchorChange={(anchors) => setConversationAnchors(anchors ?? {})}
           onSelectedAnchorChange={onSelectedCanvasAnchorChange}
@@ -489,6 +496,7 @@ function WorldStage({
             interactive={agentBarReady}
             onSelect={context.onSelect}
             onActivateAgent={onActivateAgent}
+            characterImageUrls={context.characterImageUrls}
           />
           {officeLayout ? (
             <WorldSemanticTargets
@@ -908,6 +916,7 @@ export function isWorldSurfaceContext(value: unknown): value is WorldSurfaceCont
       record.roomAlignment === "center" ||
       record.roomAlignment === "right") &&
     (record.longRoomTitleMode === "expand" || record.longRoomTitleMode === "compact") &&
+    Array.isArray(record.characterImageUrls) &&
     typeof record.canCreateSeat === "function" &&
     typeof record.onNewSeat === "function" &&
     typeof record.canCreateRoom === "function" &&
@@ -931,6 +940,7 @@ function WorldAgentBar({
   interactive,
   onSelect,
   onActivateAgent,
+  characterImageUrls,
 }: {
   className?: string;
   projection: HerdrOfficeProjection;
@@ -942,6 +952,7 @@ function WorldAgentBar({
   interactive: boolean;
   onSelect: (key: string) => void;
   onActivateAgent: (key: string) => void;
+  characterImageUrls: readonly string[];
 }) {
   const idleCount = projection.barAgents.filter(({ semanticStatus }) => semanticStatus === "idle").length;
   const blockedCount = projection.barAgents.filter(({ semanticStatus }) => semanticStatus === "blocked").length;
@@ -995,7 +1006,7 @@ function WorldAgentBar({
                 >
                   <img
                     className="world-agent-bar-avatar"
-                    src={`/world/characters/${agent.characterIndex + 1}-D-1.png`}
+                    src={officeCharacterImageUrlAt(characterImageUrls, agent.characterIndex)}
                     alt=""
                     aria-hidden="true"
                   />

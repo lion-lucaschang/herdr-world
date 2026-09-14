@@ -27,7 +27,6 @@ pub struct TabListParams {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct TabRenameParams {
     pub tab_id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
 

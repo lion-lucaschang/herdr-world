@@ -68,11 +68,7 @@ import {
   officeModelUsageTotal,
   formatOfficeUsage,
 } from "./officeObservability";
-
-const CHARACTER_URLS = Array.from(
-  { length: 12 },
-  (_, index) => `/world/characters/${index + 1}-D-1.png`,
-);
+import { DEFAULT_OFFICE_CHARACTER_IMAGE_URLS } from "./officeCharacters";
 
 const OFFICE_HEADING_TEXT_SIZE = 13;
 
@@ -206,6 +202,7 @@ export async function createOfficeRenderer(
   onCanvasRendered: (revision: number) => void,
   roomAlignment: OfficeRoomAlignment,
   longRoomTitleMode: OfficeLongRoomTitleMode,
+  characterImageUrls = DEFAULT_OFFICE_CHARACTER_IMAGE_URLS,
 ): Promise<OfficeRendererController> {
   officeDebug("renderer:create-start", {
     rooms: projection.rooms.length,
@@ -273,7 +270,7 @@ export async function createOfficeRenderer(
   diagnostics.lastError = null;
 
   const textures = await Promise.all(
-    CHARACTER_URLS.map((url) => loadTexture(url).catch(() => Texture.EMPTY)),
+    characterImageUrls.map((url) => loadTexture(url).catch(() => Texture.EMPTY)),
   );
   officeDebug("renderer:textures-ready", {
     textures: textures.filter((texture) => texture !== Texture.EMPTY).length,

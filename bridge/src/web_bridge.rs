@@ -54,9 +54,8 @@ use herdr_compat::api::schema::{
     SubscriptionEventKind, TabCreateParams, TabInfo, TabListParams, TabTarget, WorkspaceInfo,
 };
 use herdr_compat::protocol::{
-    self, AttachScrollDirection, AttachScrollSource, ClientKeybindings, ClientLaunchMode,
-    ClientMessage, RenderEncoding, ServerMessage, MAX_FRAME_SIZE, MAX_GRAPHICS_FRAME_SIZE,
-    PROTOCOL_VERSION,
+    self, AttachScrollDirection, AttachScrollSource, ClientMessage, ServerMessage,
+    MAX_FRAME_SIZE, MAX_GRAPHICS_FRAME_SIZE, PROTOCOL_VERSION,
 };
 
 use crate::agent_activity::{AgentActivityListResponse, AgentActivityManager};
@@ -77,8 +76,8 @@ const DEFAULT_PORT: u16 = 8787;
 const DEFAULT_COLS: u16 = 80;
 const DEFAULT_ROWS: u16 = 24;
 const DEFAULT_STATIC_DIR: &str = "web/dist";
-const MIN_HERDR_VERSION: (u64, u64, u64) = (0, 8, 2);
-const MIN_HERDR_VERSION_LABEL: &str = "0.8.2";
+const MIN_HERDR_VERSION: (u64, u64, u64) = (0, 9, 0);
+const MIN_HERDR_VERSION_LABEL: &str = "0.9.0";
 const BRIDGE_API_VERSION: u32 = 1;
 const WEB_COMPAT_VERSION: u32 = 1;
 const MAX_CONFIGURED_LABEL_CHARS: usize = 80;
@@ -4915,6 +4914,7 @@ async fn handle_terminal_socket(socket: WebSocket, state: BridgeState, query: Te
         rows,
         cell_width_px: 0,
         cell_height_px: 0,
+        pixel_mouse: false,
     });
 
     loop {
@@ -5739,6 +5739,7 @@ fn handle_terminal_text_frame(write_tx: &TerminalWriter, text: &str) -> Result<(
                 rows,
                 cell_width_px,
                 cell_height_px,
+                pixel_mouse: false,
             })
             .map(|_| ())
             .map_err(|_| "terminal writer closed".to_string()),
@@ -5780,15 +5781,13 @@ fn open_terminal_attach(
     let mut stream = herdr_compat::ipc::connect_local_stream(&client_socket_path)?;
     protocol::write_message(
         &mut stream,
-        &ClientMessage::Hello {
+        &ClientMessage::TerminalHello {
             version: protocol_version,
             cols,
             rows,
             cell_width_px: 0,
             cell_height_px: 0,
-            requested_encoding: RenderEncoding::TerminalAnsi,
-            keybindings: ClientKeybindings::Server,
-            launch_mode: ClientLaunchMode::TerminalAttach,
+            pixel_mouse: false,
         },
     )
     .map_err(|err| BridgeError::Protocol(err.to_string()))?;
@@ -5891,9 +5890,15 @@ fn open_terminal_attach(
                 | ServerMessage::WindowTitle { .. }
                 | ServerMessage::ReloadSoundConfig
                 | ServerMessage::MouseCapture { .. }
-                | ServerMessage::KittyKeyboardReportAll { .. }
-                | ServerMessage::PrefixInputSource { .. }
-                | ServerMessage::Frame(_)
+                | ServerMessage::DirectTerminalKeyboardProtocol { .. }
+                | ServerMessage::ClientShellKeyboardReportAll { .. }
+                | ServerMessage::ClientShellSnapshot(_)
+                | ServerMessage::PaneSurface(_)
+                | ServerMessage::SemanticNotification(_)
+                | ServerMessage::ClientShellError { .. }
+                | ServerMessage::ClientShellEndpointResponseChunk { .. }
+                | ServerMessage::PaneSurfacePatch(_)
+                | ServerMessage::EndpointControl { .. }
                 | ServerMessage::Graphics { .. }
                 | ServerMessage::GraphicsFile { .. }
                 | ServerMessage::GraphicsTransmissionRetired { .. } => {}
@@ -6252,6 +6257,7 @@ mod tests {
             transfer_id: 8,
             leading: b"secret-leading".to_vec(),
             control: "secret-control".into(),
+            surface_asset: None,
         };
         let retired = ServerMessage::GraphicsTransmissionRetired {
             transfer_id: 8,
@@ -6742,12 +6748,12 @@ mod tests {
             let (mut sock, _) = listener.accept().unwrap();
             sock.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
             let hello: ClientMessage = protocol::read_message(&mut sock, MAX_FRAME_SIZE).unwrap();
-            assert!(matches!(hello, ClientMessage::Hello { .. }));
+            assert!(matches!(hello, ClientMessage::TerminalHello { .. }));
             protocol::write_message(
                 &mut sock,
                 &ServerMessage::Welcome {
                     version: PROTOCOL_VERSION,
-                    encoding: RenderEncoding::TerminalAnsi,
+                    encoding: protocol::RenderEncoding::TerminalAnsi,
                     error: None,
                 },
             )
@@ -6807,12 +6813,12 @@ mod tests {
         let daemon = thread::spawn(move || {
             let (mut sock, _) = listener.accept().unwrap();
             let hello: ClientMessage = protocol::read_message(&mut sock, MAX_FRAME_SIZE).unwrap();
-            assert!(matches!(hello, ClientMessage::Hello { .. }));
+            assert!(matches!(hello, ClientMessage::TerminalHello { .. }));
             protocol::write_message(
                 &mut sock,
                 &ServerMessage::Welcome {
                     version: PROTOCOL_VERSION,
-                    encoding: RenderEncoding::TerminalAnsi,
+                    encoding: protocol::RenderEncoding::TerminalAnsi,
                     error: None,
                 },
             )
@@ -6827,6 +6833,7 @@ mod tests {
                 transfer_id: 2,
                 leading: b"private-leading".to_vec(),
                 control: "private-control".into(),
+                surface_asset: None,
             };
             for message in [
                 graphics_file.clone(),
@@ -8306,7 +8313,7 @@ mod tests {
     #[test]
     fn daemon_status_accepts_minimum_version_and_exact_protocol() {
         assert_eq!(
-            validated_daemon_protocol(runtime_status("0.8.2", PROTOCOL_VERSION)).unwrap(),
+            validated_daemon_protocol(runtime_status("0.9.0", PROTOCOL_VERSION)).unwrap(),
             PROTOCOL_VERSION
         );
         assert_eq!(
@@ -8352,7 +8359,7 @@ mod tests {
 
     #[test]
     fn daemon_status_accepts_version_prefix_and_build_metadata() {
-        for version in ["v0.8.2", "0.8.2+linux-x86-64"] {
+        for version in ["v0.9.0", "0.9.0+linux-x86-64"] {
             assert_eq!(
                 validated_daemon_protocol(runtime_status(version, PROTOCOL_VERSION)).unwrap(),
                 PROTOCOL_VERSION
@@ -8361,8 +8368,8 @@ mod tests {
     }
 
     #[test]
-    fn daemon_status_rejects_version_before_0_8_2() {
-        let error = validated_daemon_protocol(runtime_status("0.8.1", PROTOCOL_VERSION))
+    fn daemon_status_rejects_version_before_0_9_0() {
+        let error = validated_daemon_protocol(runtime_status("0.8.9", PROTOCOL_VERSION))
             .unwrap_err()
             .to_string();
         assert!(error.contains("too old"));
@@ -8384,13 +8391,13 @@ mod tests {
 
     #[test]
     fn daemon_status_rejects_any_other_protocol() {
-        let older = validated_daemon_protocol(runtime_status("0.8.2", 19))
+        let older = validated_daemon_protocol(runtime_status("0.9.0", 21))
             .unwrap_err()
             .to_string();
         assert!(older.contains("incompatible"));
         assert!(older.contains(&PROTOCOL_VERSION.to_string()));
 
-        assert!(validated_daemon_protocol(runtime_status("0.8.2", 21))
+        assert!(validated_daemon_protocol(runtime_status("0.9.0", 20))
             .unwrap_err()
             .to_string()
             .contains("incompatible"));
@@ -8399,24 +8406,24 @@ mod tests {
     #[test]
     fn daemon_admission_diagnostics_are_bounded_and_name_the_supported_baseline() {
         let invalid_version = "v".to_string() + &"9".repeat(10_000);
-        let error = validated_daemon_protocol(runtime_status(&invalid_version, 20))
+        let error = validated_daemon_protocol(runtime_status(&invalid_version, 22))
             .unwrap_err()
             .to_string();
         assert!(error.len() < 256);
-        assert!(error.contains("Herdr 0.8.2 or newer"));
-        assert!(error.contains("protocol 20"));
+        assert!(error.contains("Herdr 0.9.0 or newer"));
+        assert!(error.contains("protocol 22"));
         assert!(!error.contains(&invalid_version));
 
         let missing_protocol = herdr_compat::api::RuntimeStatus {
-            version: Some("0.8.2".into()),
+            version: Some("0.9.0".into()),
             protocol: None,
             capabilities: None,
         };
         let error = validated_daemon_protocol(missing_protocol)
             .unwrap_err()
             .to_string();
-        assert!(error.contains("Herdr 0.8.2 or newer"));
-        assert!(error.contains("protocol 20"));
+        assert!(error.contains("Herdr 0.9.0 or newer"));
+        assert!(error.contains("protocol 22"));
     }
 
     #[test]
@@ -8825,7 +8832,7 @@ mod tests {
         let message = io_err.to_string();
         assert!(message.contains("unable to start Herdr World bridge"));
         assert!(message.contains("unexpected api result"));
-        assert!(message.contains("Install, update, or start Herdr v0.8.2 or newer"));
+        assert!(message.contains("Install, update, or start Herdr v0.9.0 or newer"));
         assert!(message.contains("consent-based setup"));
         assert!(message.contains("--session NAME or HERDR_SOCKET_PATH"));
     }

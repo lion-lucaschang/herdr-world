@@ -4,6 +4,7 @@ import type { HostConnectionState } from "../runtimeClient";
 import { qualifiedRuntimeKey, qualifyRuntimeTarget } from "../runtimeIdentity";
 import type { QualifiedTarget } from "../runtimeIdentity";
 import type { AgentStatus, PaneInfo, Snapshot, TabInfo, WorkspaceInfo } from "../types";
+import { OFFICE_CHARACTER_COUNT } from "./officeCharacters";
 
 export const OFFICE_PRESENTATION_BOUNDS = Object.freeze({
   rooms: 128,
@@ -15,7 +16,6 @@ export const OFFICE_PRESENTATION_BOUNDS = Object.freeze({
   rosterPage: 50,
 });
 
-const CHARACTER_COUNT = 12;
 const HOST_THEME_COUNT = 6;
 const MAX_VISIBLE_LABEL = 80;
 const MAX_STATE_LABEL = 96;
@@ -572,7 +572,7 @@ function projectAgent(
     placement: destination === "room" ? "standing" : destination === "reception" ? "waiting" : "bar",
     stale: host.stale,
     canOpenInSpaces,
-    characterIndex: stableNumber(key) % CHARACTER_COUNT,
+    characterIndex: stableNumber(key) % OFFICE_CHARACTER_COUNT,
   };
 }
 

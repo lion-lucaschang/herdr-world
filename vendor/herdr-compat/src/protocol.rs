@@ -7,28 +7,25 @@ mod bridge_fixture_tests {
     use super::*;
 
     #[test]
-    fn protocol_version_matches_reviewed_herdr_v082_snapshot() {
-        assert_eq!(PROTOCOL_VERSION, 20);
+    fn protocol_version_matches_reviewed_herdr_v090_snapshot() {
+        assert_eq!(PROTOCOL_VERSION, 22);
     }
 
     #[test]
-    fn client_hello_wire_fixture_matches_reviewed_snapshot() {
-        let msg = ClientMessage::Hello {
+    fn client_terminal_hello_wire_fixture_matches_reviewed_snapshot() {
+        let msg = ClientMessage::TerminalHello {
             version: PROTOCOL_VERSION,
             cols: 80,
             rows: 24,
             cell_width_px: 8,
             cell_height_px: 16,
-            requested_encoding: RenderEncoding::SemanticFrame,
-            keybindings: ClientKeybindings::Server,
-            launch_mode: ClientLaunchMode::TerminalAttach,
+            pixel_mouse: true,
         };
         let mut frame = Vec::new();
         write_message(&mut frame, &msg).unwrap();
-
-        assert_eq!(frame, vec![9, 0, 0, 0, 0, 20, 80, 24, 8, 16, 0, 0, 2]);
         let decoded: ClientMessage = read_message(&mut frame.as_slice(), MAX_FRAME_SIZE).unwrap();
         assert_eq!(decoded, msg);
+        assert_eq!(frame.len(), 11);
     }
 
     #[test]
@@ -40,9 +37,8 @@ mod bridge_fixture_tests {
         };
         let mut frame = Vec::new();
         write_message(&mut frame, &msg).unwrap();
-
-        assert_eq!(frame, vec![4, 0, 0, 0, 0, 20, 1, 0]);
         let decoded: ServerMessage = read_message(&mut frame.as_slice(), MAX_FRAME_SIZE).unwrap();
         assert_eq!(decoded, msg);
+        assert_eq!(frame, vec![4, 0, 0, 0, 0, 22, 1, 0]);
     }
 }
