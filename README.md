@@ -48,6 +48,27 @@ herdr plugin install IvoryHeart/herdr-world --ref v0.1.1
 herdr plugin action invoke open --plugin ivoryheart.herdr-world
 ```
 
+### Lucas fork preview
+
+This fork carries Herdr `0.9.0` / terminal protocol `22` compatibility and browser-local
+character customization. On machines already running Herdr `0.9.0`, install the pinned fork tag with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lion-lucaschang/herdr-world/v0.1.1-lucas.1/scripts/install-lucas-fork.sh | bash
+```
+
+Manual install or upgrade from a previous Herdr World plugin:
+
+```bash
+herdr plugin action invoke stop --plugin ivoryheart.herdr-world || true
+herdr plugin uninstall ivoryheart.herdr-world || true
+herdr plugin install lion-lucaschang/herdr-world --ref v0.1.1-lucas.1 --yes
+herdr plugin action invoke start --plugin ivoryheart.herdr-world
+```
+
+The fork build requires Node.js `22.14.0` or newer and Rust `1.88.0` or newer because the plugin
+builds the native bridge from source.
+
 Open [http://127.0.0.1:8787](http://127.0.0.1:8787) if the browser does not open automatically.
 Checksum-verified standalone archives are available on the
 [release page](https://github.com/IvoryHeart/herdr-world/releases/tag/v0.1.1).
