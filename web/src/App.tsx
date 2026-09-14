@@ -5465,6 +5465,7 @@ export function App() {
           showMobileTerminalSettings={isTouchInput}
           showRemoteAccess={!isNativeAndroid()}
           onOpenWorldSettings={worldSettingsController.open}
+          onOpenCharacterSettings={worldSettingsController.openCharacters}
           notesEnabled={notesEnabled}
           onNotesEnabled={setNotesEnabled}
           navigationSyncMode={navigationSyncMode}

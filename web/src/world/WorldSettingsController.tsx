@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { BridgeRuntime } from "../bridge";
+import { WorldCharacterSettingsDialog } from "./WorldCharacterSettingsDialog";
 import { WorldSettingsDialog } from "./WorldSettingsDialog";
 import type { OfficeLongRoomTitleMode, OfficeRoomAlignment } from "./officeGeometry";
 import {
@@ -25,8 +26,11 @@ export type WorldSettingsController = {
   ceoImageUrl: string;
   characterImageUrls: readonly string[];
   isOpen: boolean;
+  charactersOpen: boolean;
   open: () => void;
+  openCharacters: () => void;
   close: () => void;
+  closeCharacters: () => void;
   markSaved: () => void;
 };
 
@@ -49,6 +53,7 @@ export function useWorldSettingsController({
   const [ceoImageUrl, setCeoImageUrl] = useState(readWorldCeoImageUrl);
   const [characterImageUrls, setCharacterImageUrls] = useState(readWorldCharacterImageUrls);
   const [isOpen, setOpen] = useState(false);
+  const [charactersOpen, setCharactersOpen] = useState(false);
   const [observabilityRevision, setObservabilityRevision] = useState(0);
   const appliedSettingsRef = useRef(new Map<string, string>());
   const settingsSyncRef = useRef(new Map<string, Promise<void>>());
@@ -57,7 +62,12 @@ export function useWorldSettingsController({
     onBeforeOpen?.();
     setOpen(true);
   }, [onBeforeOpen]);
+  const openCharacters = useCallback(() => {
+    onBeforeOpen?.();
+    setCharactersOpen(true);
+  }, [onBeforeOpen]);
   const close = useCallback(() => setOpen(false), []);
+  const closeCharacters = useCallback(() => setCharactersOpen(false), []);
   const markSaved = useCallback(() => {
     setObservabilityRevision((revision) => revision + 1);
     setRoomAlignment(readWorldRoomAlignment());
@@ -149,8 +159,11 @@ export function useWorldSettingsController({
     ceoImageUrl,
     characterImageUrls,
     isOpen,
+    charactersOpen,
     open,
+    openCharacters,
     close,
+    closeCharacters,
     markSaved,
   };
 }
@@ -160,7 +173,17 @@ export function WorldSettingsOverlay({
 }: {
   controller: WorldSettingsController;
 }) {
-  return controller.isOpen ? (
-    <WorldSettingsDialog onClose={controller.close} onSaved={controller.markSaved} />
-  ) : null;
+  return (
+    <>
+      {controller.isOpen ? (
+        <WorldSettingsDialog onClose={controller.close} onSaved={controller.markSaved} />
+      ) : null}
+      {controller.charactersOpen ? (
+        <WorldCharacterSettingsDialog
+          onClose={controller.closeCharacters}
+          onSaved={controller.markSaved}
+        />
+      ) : null}
+    </>
+  );
 }

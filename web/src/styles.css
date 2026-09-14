@@ -4753,7 +4753,12 @@ button {
   width: min(520px, 100%);
 }
 
-.world-settings-content {
+.world-character-settings-modal {
+  width: min(760px, 100%);
+}
+
+.world-settings-content,
+.world-character-settings-content {
   gap: 12px;
 }
 
@@ -4766,6 +4771,7 @@ button {
 
 .world-character-settings-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 10px;
   max-height: min(44vh, 480px);
   overflow: auto;

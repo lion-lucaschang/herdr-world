@@ -19,20 +19,6 @@
         { "id": "default-11", "label": "Default 11", "url": "/world/characters/11-D-1.png" },
         { "id": "default-12", "label": "Default 12", "url": "/world/characters/12-D-1.png" }
       ]
-    },
-    {
-      "id": "herdr-originals",
-      "label": "Herdr originals",
-      "items": [
-        { "id": "spark", "label": "Spark", "url": "/world/character-gallery/herdr/spark.svg" },
-        { "id": "mint", "label": "Mint", "url": "/world/character-gallery/herdr/mint.svg" },
-        { "id": "ember", "label": "Ember", "url": "/world/character-gallery/herdr/ember.svg" },
-        { "id": "violet", "label": "Violet", "url": "/world/character-gallery/herdr/violet.svg" },
-        { "id": "aqua", "label": "Aqua", "url": "/world/character-gallery/herdr/aqua.svg" },
-        { "id": "rose", "label": "Rose", "url": "/world/character-gallery/herdr/rose.svg" },
-        { "id": "gold", "label": "Gold", "url": "/world/character-gallery/herdr/gold.svg" },
-        { "id": "mono", "label": "Mono", "url": "/world/character-gallery/herdr/mono.svg" }
-      ]
     }
   ]
 }

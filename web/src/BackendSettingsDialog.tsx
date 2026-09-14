@@ -3,6 +3,7 @@ import type { HsvaColor } from "@uiw/color-convert";
 import Wheel from "@uiw/react-color-wheel";
 import {
   Building2,
+  Image,
   Network,
   Plus,
   RotateCcw,
@@ -67,6 +68,7 @@ type Props = {
   showMobileTerminalSettings: boolean;
   showRemoteAccess: boolean;
   onOpenWorldSettings: () => void;
+  onOpenCharacterSettings: () => void;
   notesEnabled: boolean;
   onNotesEnabled: (enabled: boolean) => void;
   navigationSyncMode: NavigationSyncMode;
@@ -127,6 +129,7 @@ export function BackendSettingsDialog({
   showMobileTerminalSettings,
   showRemoteAccess,
   onOpenWorldSettings,
+  onOpenCharacterSettings,
   notesEnabled,
   onNotesEnabled,
   navigationSyncMode,
@@ -418,6 +421,17 @@ export function BackendSettingsDialog({
             >
               <Building2 size={15} />
               <span>Office</span>
+            </button>
+            <button
+              className="settings-area-tab"
+              type="button"
+              role="tab"
+              aria-label="Character settings"
+              aria-selected={false}
+              onClick={onOpenCharacterSettings}
+            >
+              <Image size={15} />
+              <span>Characters</span>
             </button>
           </div>
 
