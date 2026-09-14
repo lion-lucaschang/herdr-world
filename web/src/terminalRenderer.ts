@@ -1493,6 +1493,33 @@ function hideGhosttyTextarea(textarea: HTMLTextAreaElement) {
   textarea.style.setProperty("--ghostty-ime-height", "1px");
 }
 
+function visibleTerminalRect(
+  textarea: HTMLElement,
+  canvas: HTMLElement | null | undefined,
+  terminalElement: HTMLElement | null | undefined,
+) {
+  const terminalRect = (canvas ?? terminalElement)?.getBoundingClientRect();
+  const hostRect = textarea.closest<HTMLElement>(".terminal-host")?.getBoundingClientRect();
+  if (!terminalRect || !hostRect) {
+    return terminalRect ?? hostRect ?? null;
+  }
+  const left = Math.max(terminalRect.left, hostRect.left);
+  const top = Math.max(terminalRect.top, hostRect.top);
+  const right = Math.min(terminalRect.right, hostRect.right);
+  const bottom = Math.min(terminalRect.bottom, hostRect.bottom);
+  if (right <= left || bottom <= top) {
+    return hostRect;
+  }
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+  };
+}
+
 function positionGhosttyTextareaForInput(
   textarea: HTMLTextAreaElement,
   terminal: Terminal | null | undefined,
@@ -1502,8 +1529,7 @@ function positionGhosttyTextareaForInput(
     return;
   }
   const canvas = terminal.renderer?.getCanvas();
-  const host = canvas ?? terminal.element;
-  const rect = host?.getBoundingClientRect();
+  const rect = visibleTerminalRect(textarea, canvas, terminal.element);
   const metrics = terminal.renderer?.getMetrics();
   if (!rect || rect.width <= 0 || rect.height <= 0) {
     hideGhosttyTextarea(textarea);
@@ -1555,18 +1581,21 @@ function updateImePreeditOverlay(
     return;
   }
   const canvas = terminal.renderer?.getCanvas();
-  const terminalRect = (canvas ?? terminal.element)?.getBoundingClientRect();
+  const terminalRect = visibleTerminalRect(textarea, canvas, terminal.element);
   const fontSize = terminal.options.fontSize ?? DEFAULT_TERMINAL_FONT_SIZE_PX;
   const lineHeight = textarea.style.height || `${Math.ceil(fontSize * 1.2)}px`;
+  const lineHeightPx = Number.parseFloat(lineHeight) || Math.ceil(fontSize * 1.2);
   const anchorLeft = Number.parseFloat(textarea.style.left) || 1;
   const anchorTop = Number.parseFloat(textarea.style.top) || 1;
   const visibleLeft = Math.max(4, terminalRect?.left ?? 4);
   const visibleRight = Math.min(window.innerWidth - 4, terminalRect?.right ?? window.innerWidth - 4);
+  const visibleTop = Math.max(4, terminalRect?.top ?? 4);
+  const visibleBottom = Math.min(window.innerHeight - 4, terminalRect?.bottom ?? window.innerHeight - 4);
   const maxWidth = Math.max(1, Math.min(576, visibleRight - visibleLeft));
   overlay.hidden = false;
   overlay.textContent = preedit;
   overlay.style.left = `${anchorLeft}px`;
-  overlay.style.top = `${anchorTop}px`;
+  overlay.style.top = `${clampNumber(anchorTop, visibleTop, Math.max(visibleTop, visibleBottom - lineHeightPx))}px`;
   overlay.style.maxWidth = `${maxWidth}px`;
   overlay.style.fontFamily = TERMINAL_FONT_FAMILY;
   overlay.style.fontSize = `${fontSize}px`;
