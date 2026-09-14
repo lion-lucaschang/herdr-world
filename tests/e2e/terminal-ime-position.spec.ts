@@ -2,8 +2,11 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 // Exercise the real Ghostty renderer against the synthetic HTTP/WebSocket fixture.
 // CDP generates browser composition events; no live agent receives test input.
+const browserName = process.env.HERDR_IME_BROWSER === "webkit" ? "webkit" : "chromium";
+test.use({ browserName });
+
 for (const deviceScaleFactor of [1, 2]) {
-  test.describe(`Office IME at DPR ${deviceScaleFactor}`, () => {
+  test.describe(`Office IME in ${browserName} at DPR ${deviceScaleFactor}`, () => {
     test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor });
     test.setTimeout(90_000);
 
@@ -15,7 +18,20 @@ for (const deviceScaleFactor of [1, 2]) {
       const textarea = bubble.locator("textarea.ghostty-hidden-input");
       await expect(textarea).toHaveCount(1);
       await expect(bubble.locator(".terminal-overlay")).toHaveCount(0);
-      const cdp = await page.context().newCDPSession(page);
+      const cdp = browserName === "chromium" ? await page.context().newCDPSession(page) : null;
+      // WebKit has no CDP composition API. Drive DOM composition events there
+      // to exercise its actual CSS layout; native candidate UI remains manual QA.
+      const compose = async () => {
+        if (cdp) {
+          await cdp.send("Input.imeSetComposition", { text: "中文測試", selectionStart: 4, selectionEnd: 4 });
+        } else {
+          await textarea.evaluate((input) => {
+            input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "" }));
+            input.value = "中文測試";
+            input.dispatchEvent(new CompositionEvent("compositionupdate", { bubbles: true, data: "中文測試" }));
+          });
+        }
+      };
       const readInput = async () => {
         const log = await (await request.get("/__fixture/requests")).json();
         return log["host-a"].terminalInput.filter((frame: { type: string }) => frame.type === "input");
@@ -55,7 +71,7 @@ for (const deviceScaleFactor of [1, 2]) {
         }).toBeLessThan(1);
         const inputBefore = await readInput();
         const boundsBefore = await bubble.boundingBox();
-        await cdp.send("Input.imeSetComposition", { text: "中文測試", selectionStart: 4, selectionEnd: 4 });
+        await compose();
         const overlay = bubble.locator(".ghostty-ime-preedit");
         await expect(overlay).toBeVisible();
         await expect(overlay).toHaveText("中文測試");
@@ -69,12 +85,18 @@ for (const deviceScaleFactor of [1, 2]) {
         expect(await bubble.boundingBox()).toEqual(boundsBefore);
         expect(await readInput()).toEqual(inputBefore);
         // Commit Chinese text without submitting a terminal command.
-        await cdp.send("Input.insertText", { text: "中文測試" });
+        if (cdp) {
+          await cdp.send("Input.insertText", { text: "中文測試" });
+        } else {
+          await textarea.evaluate((input) => input.dispatchEvent(
+            new CompositionEvent("compositionend", { bubbles: true, data: "中文測試" }),
+          ));
+        }
         await expect(overlay).toBeHidden();
         await expect.poll(async () => (await readInput()).slice(inputBefore.length).map((f: { data: string }) => f.data).join(""))
           .toBe("中文測試");
       }
-      await cdp.detach();
+      await cdp?.detach();
     });
   });
 }
