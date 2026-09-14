@@ -3,7 +3,7 @@ set -euo pipefail
 
 PLUGIN_ID="ivoryheart.herdr-world"
 REPO="lion-lucaschang/herdr-world"
-REF="${HERDR_WORLD_REF:-v0.1.1-lucas.1}"
+REF="${HERDR_WORLD_REF:-v0.1.1-lucas.2}"
 MIN_HERDR_VERSION="0.9.0"
 MIN_NODE_VERSION="22.14.0"
 MIN_RUST_VERSION="1.88.0"
@@ -103,8 +103,9 @@ echo "Using cargo: ${cargo_path}"
 herdr plugin action invoke stop --plugin "$PLUGIN_ID" || true
 herdr plugin uninstall "$PLUGIN_ID" || true
 HERDR_WORLD_CARGO_PATH="$cargo_path" herdr plugin install "$REPO" --ref "$REF" --yes
-herdr plugin action invoke doctor --plugin "$PLUGIN_ID"
 herdr plugin action invoke start --plugin "$PLUGIN_ID"
+sleep 2
+herdr plugin action invoke doctor --plugin "$PLUGIN_ID"
 
 echo
 echo "Herdr World install requested. Check status with:"

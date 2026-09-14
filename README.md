@@ -54,7 +54,7 @@ This fork carries Herdr `0.9.0` / terminal protocol `22` compatibility and brows
 character customization. On machines already running Herdr `0.9.0`, install the pinned fork tag with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lion-lucaschang/herdr-world/v0.1.1-lucas.1/scripts/install-lucas-fork.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lion-lucaschang/herdr-world/v0.1.1-lucas.2/scripts/install-lucas-fork.sh | bash
 ```
 
 Manual install or upgrade from a previous Herdr World plugin:
@@ -62,7 +62,7 @@ Manual install or upgrade from a previous Herdr World plugin:
 ```bash
 herdr plugin action invoke stop --plugin ivoryheart.herdr-world || true
 herdr plugin uninstall ivoryheart.herdr-world || true
-herdr plugin install lion-lucaschang/herdr-world --ref v0.1.1-lucas.1 --yes
+herdr plugin install lion-lucaschang/herdr-world --ref v0.1.1-lucas.2 --yes
 herdr plugin action invoke start --plugin ivoryheart.herdr-world
 ```
 
